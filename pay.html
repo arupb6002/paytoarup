@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pay Now</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  text-align:center;
+  padding:40px;
+  background:#f5f5f5;
+}
+.box {
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  display:inline-block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+<h2 id="name">Loading...</h2>
+<h3 id="amount"></h3>
+
+<div id="qrcode"></div>
+
+<p id="status">Waiting for payment...</p>
+</div>
+
+<script>
+let sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJb-sRoijvDy_pNxua6X5o3fiLL9br8j2pjYqZ95Q-l9EXH2Rez86MshDtmG-hkfwiGUyu2yrth0SF/pubhtml";
+
+let params = new URLSearchParams(window.location.search);
+let id = params.get("id");
+
+// fetch sheet data
+fetch(sheetURL)
+.then(res => res.text())
+.then(data => {
+    let json = JSON.parse(data.substring(47).slice(0,-2));
+    let rows = json.table.rows;
+
+    rows.forEach(r => {
+        if (r.c[0].v == id) {
+
+            let name = r.c[1].v;
+            let amount = r.c[2].v;
+
+            document.getElementById("name").innerText = name;
+            document.getElementById("amount").innerText = "₹ " + amount;
+
+            let upi = `upi://pay?pa=6002148763@okbizaxis&pn=${name}&am=${amount}&cu=INR`;
+
+            new QRCode(document.getElementById("qrcode"), {
+                text: upi,
+                width:200,
+                height:200
+            });
+        }
+    });
+});
+
+// 🔁 CHECK STATUS EVERY 3 SEC
+setInterval(() => {
+  fetch("http://localhost:5000/check?id=" + id)
+  .then(res => res.json())
+  .then(data => {
+      if (data.status === "paid") {
+          window.location.href = "success.html?pid=" + data.payment_id;
+      }
+  });
+}, 3000);
+</script>
+
+</body>
+</html>
